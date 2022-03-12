@@ -1,15 +1,17 @@
+;; --- Comments ----------------------------------------------------------------
+
 (comment) @comment
+(
+ (comment) @attribute
+ (#match? @attribute "^/// .*")
+)
 
-; Pragma
+;; --- Pragma ------------------------------------------------------------------
+
 (pragma_directive) @tag
-(pragma_directive ">=" @tag)
-(pragma_directive "<=" @tag)
-(pragma_directive "=" @tag)
-(pragma_directive "~" @tag)
-(pragma_directive "^" @tag)
 
+;; --- Literals ----------------------------------------------------------------
 
-; Literals
 [
  (string)
  (hex_string_literal)
@@ -26,28 +28,29 @@
  (false)
 ] @constant.builtin
 
+;; --- Types -------------------------------------------------------------------
 
-; Type
-(type_name) @type
+(type_name (identifier) @type)
+(type_name "mapping" @type)
 (primitive_type) @type
+(contract_declaration name: (identifier) @type)
 (struct_declaration struct_name: (identifier) @type)
+(struct_member name: (identifier) @field)
 (enum_declaration enum_type_name: (identifier) @type)
-; Color payable in payable address conversion as type and not as keyword
-(payable_conversion_expression "payable" @type)
-(emit_statement . (identifier) @type)
-; Handles ContractA, ContractB in function foo() override(ContractA, contractB) {} 
-(override_specifier (identifier) @type)
-; Ensures that delimiters in mapping( ... => .. ) are not colored like types
+(payable_conversion_expression "payable" @type) ; Color payable in payable address conversion as type and not as keyword
+(emit_statement . (identifier) @type) ; Handles ContractA, ContractB in function foo() override(ContractA, contractB) {}
+(override_specifier (identifier) @type) ; Ensures that delimiters in mapping( ... => .. ) are not colored like types
 (type_name "(" @punctuation.bracket "=>" @punctuation.delimiter ")" @punctuation.bracket)
 
+(member_expression (property_identifier) @field)
+(property_identifier) @field
+(struct_expression ((identifier) @field . ":"))
+(enum_value) @constant
 
+;; --- Functions and parameters ------------------------------------------------
 
-; Functions and parameters
-
-(function_definition
-  function_name:  (identifier) @function)
-(modifier_definition
-  name:  (identifier) @function)
+(function_definition function_name: (identifier) @function)
+(modifier_definition name: (identifier) @function)
 (yul_evm_builtin) @function.builtin
 
 ; Use contructor coloring for special functions
@@ -55,38 +58,29 @@
 (fallback_receive_definition "receive" @constructor)
 (fallback_receive_definition "fallback" @constructor)
 
-(modifier_invocation (identifier) @function)
+(modifier_invocation (identifier) @function.call)
+(call_expression . (member_expression (property_identifier) @method.call)); Handles expressions like structVariable.g();
+(call_expression . (identifier) @function.call) ; Handles expressions like g();
+(function_definition function_name: (identifier) @function)
+(call_expression (identifier) @field . ":") ; Handles the field in struct literals like MyStruct({MyField: MyVar * 2})
 
-; Handles expressions like structVariable.g();
-(call_expression . (member_expression (property_identifier) @function.method))
-
-; Handles expressions like g();
-(call_expression . (identifier) @function)
-
-; Function parameters
+;;; Function parameters
 (event_paramater name: (identifier) @variable.parameter)
-(function_definition
-  name:  (identifier) @variable.parameter)
+(parameter name: (identifier) @variable.parameter)
 
-; Yul functions
-(yul_function_call function: (yul_identifier) @function)
+;;; Yul functions
+(yul_function_call function: (yul_identifier) @function.call)
 
-; Yul function parameters
-(yul_function_definition . (yul_identifier) @function (yul_identifier) @variable.parameter)
+;;; Yul function parameters
+(yul_function_definition . (yul_identifier) @function (yul_identifier) @parameter)
 
-(meta_type_expression "type" @keyword)
+;; --- Keywords ----------------------------------------------------------------
 
-(member_expression (property_identifier) @property)
-(property_identifier) @property
-(struct_expression ((identifier) @property . ":"))
-(enum_value) @property
-
-
-; Keywords
+;;; Misc
 [
  "pragma"
- "import"
  "contract"
+ "function"
  "interface"
  "library"
  "is"
@@ -95,19 +89,6 @@
  "event"
  "using"
  "assembly"
- "switch"
- "case"
- "default"
- "break"
- "continue"
- "if"
- "else"
- "for"
- "while"
- "do"
- "try"
- "catch"
- "return"
  "emit"
  "public"
  "internal"
@@ -117,11 +98,9 @@
  "view"
  "payable"
  "modifier"
- "returns"
  "memory"
  "storage"
  "calldata"
- "function"
  "var"
  (constant)
  (virtual)
@@ -129,61 +108,98 @@
  (yul_leave)
 ] @keyword
 
+;;; Repetition-related
+[
+ "for"
+ "while"
+ "do"
+] @repeat
+
+;;; Conditional-related
+[
+ "break"
+ "continue"
+ "if"
+ "else"
+ "switch"
+ "case"
+ "default"
+] @conditional
+
+;;; Exception-related
+[
+ "try"
+ "catch"
+] @keyword
+
+;;; Return-related
+[
+ "return"
+ "returns"
+] @keyword
+
+;;; Import-related
+"import" @keyword
 (import_directive "as" @keyword)
 (import_directive "from" @keyword)
+
 (event_paramater "indexed" @keyword)
+(meta_type_expression "type" @keyword)
 
-; Punctuation
-
-[
-  "("
-  ")"
-  "["
-  "]"
-  "{"
-  "}"
-]  @punctuation.bracket
-
+;; --- Punctuation -------------------------------------------------------------
 
 [
-  "."
-  ","
+"("
+")"
+"["
+"]"
+"{"
+"}"
+] @punctuation.bracket
+[
+"."
+","
 ] @punctuation.delimiter
 
-
-; Operators
+;; --- Operators ---------------------------------------------------------------
 
 [
-  "&&"
-  "||"
-  ">>"
-  ">>>"
-  "<<"
-  "&"
-  "^"
-  "|"
-  "+"
-  "-"
-  "*"
-  "/"
-  "%"
-  "**"
-  "<"
-  "<="
-  "=="
-  "!="
-  "!=="
-  ">="
-  ">"
-  "!"
-  "~"
-  "-"
-  "+"
-  "delete"
-  "new"
-  "++"
-  "--"
+"&&"
+"||"
+">>"
+">>>"
+"<<"
+"&"
+"^"
+"|"
+"+"
+"-"
+"*"
+"/"
+"%"
+"**"
+"<"
+"<="
+"=="
+"!="
+"!=="
+">="
+">"
+"!"
+"~"
+"-"
+"+"
+"++"
+"--"
 ] @operator
+
+[
+"delete"
+"new"
+] @operator
+
+;; --- Catch-alls --------------------------------------------------------------
 
 (identifier) @variable
 (yul_identifier) @variable
+
